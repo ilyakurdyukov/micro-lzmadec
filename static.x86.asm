@@ -211,16 +211,14 @@ _case_rep:
 	cdq	; _len
 	jmp	_copy.1
 
-.3:	add	esi, 12
+.3:	mov	dl, 3
+	mov	ebx, _rep0
+.6:	dec	edx
+	lea	esi, [esi+12]
+	xchg	[ebp-loc_rep+edx*4], ebx
+	je	.4
 	call	_rc_bit
-	mov	ebx, _rep0	; 1 0 2 3
-	xchg	_rep1, ebx
-	jnc	.4
-	add	esi, 12
-	call	_rc_bit
-	xchg	_rep2, ebx	; 2 0 1 3
-	jnc	.4
-	xchg	_rep3, ebx	; 3 0 1 2
+	jc	.6
 .4:	mov	_rep0, ebx
 .5:	; state = state < 7 ? 8 : 11
 	or	_state, 8
