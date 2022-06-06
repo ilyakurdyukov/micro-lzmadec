@@ -16,7 +16,7 @@
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 ; THE SOFTWARE.
 
-; build: nasm -f bin -O9 static.x86.asm -o static32
+; build: nasm -f bin -O9 static.x86.asm -o static32.bin
 
 BITS 32
 ORG 0

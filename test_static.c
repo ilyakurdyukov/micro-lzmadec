@@ -52,7 +52,10 @@ int main(int argc, char **argv) {
 	unsigned long long out_size;
 	uint8_t *code1, *code2, *src, *out, *out2, *temp; char *end;
 	uint32_t *header; int tsize = 2048, code_extra;
-	if (argc != 1 + 3) return 1;
+	if (argc != 1 + 3) {
+		fprintf(stderr, "Usage: ./test_static static[32|64].bin src.lzma out_size > output.bin\n");
+		return 1;
+	}
 	code1 = loadfile(argv[1], &code_size);
 	if (!code1) {
 		fprintf(stderr, "!!! error loading code\n");
