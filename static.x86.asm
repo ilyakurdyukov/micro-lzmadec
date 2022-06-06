@@ -30,7 +30,6 @@ section .text
 
 	dd _rel_code - 4 - _code
 	dd _rel_tsize - 4 - _code
-	dd _rel_dst1 - 1 - _code
 	dd _rel_pb - 1 - _code
 	dd _rel_lp - 1 - _code
 	dd _rel_lc - 1 - _code
@@ -119,8 +118,6 @@ _rc_norm:
 
 _loop1:	pop	_rc_bit
 _loop:	mov	ecx, Dest
-	add	ecx, 0x55
-_rel_dst1:
 	mov	bh, cl
 	pop	esi		; _state
 	push	esi

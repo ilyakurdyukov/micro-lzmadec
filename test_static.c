@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 	header = (uint32_t*)code1;
-	if (code_size < 4 * 7 || code_size - 4 * 7 != header[0]) {
+	if (code_size < 4 * 6 || code_size - 4 * 6 != header[0]) {
 		fprintf(stderr, "!!! code header is wrong\n");
 		return 1;
 	}
@@ -150,16 +150,14 @@ int main(int argc, char **argv) {
 		p += 5;
 #endif
 
-		memcpy(p, header + 7, code_size);
+		memcpy(p, header + 6, code_size);
 
 		*(uint32_t*)(p + header[1]) =
 				c[0] << 24 | c[1] << 16 | c[2] << 8 | c[3];
 		*(uint32_t*)(p + header[2]) = tsize;
-		// negative low byte of the dest addr
-		*(uint8_t*)(p + header[3]) = -(intptr_t)out;
-		*(uint8_t*)(p + header[4]) = (1 << pb) - 1;
-		*(uint8_t*)(p + header[5]) = (1 << lp) - 1;
-		*(uint8_t*)(p + header[6]) = lc;
+		*(uint8_t*)(p + header[3]) = (1 << pb) - 1;
+		*(uint8_t*)(p + header[4]) = (1 << lp) - 1;
+		*(uint8_t*)(p + header[5]) = lc;
 
 		p += code_size;
 
