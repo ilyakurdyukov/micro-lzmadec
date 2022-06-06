@@ -140,9 +140,10 @@ _loop:	xor	r15d, r15d	; _len
 	and	bh, ch	; _lp
 	shl	ebx, cl
 	mov	bl, 0
-	lea	r10d, [rbx+rbx*2+2048]	; 1846
+	lea	edx, [rbx+rbx*2+2048]	; 1846
 _case_lit:
-	lea	ebx, [rdx+1]
+	push	1
+	pop	rbx
 	; state = 0x546543210000 >> state * 4 & 15;
 	; state = state < 4 ? 0 : state - (state > 9 ? 6 : 3)
 .4:	add	al, -3
@@ -153,12 +154,11 @@ _case_lit:
 	push	rax		; _state
 %if 0	; -2 bytes, but slower
 	add	al, -4
-	sbb	dh, dh
+	sbb	bh, bh
 %else
 	cmp	al, 7-3
 	jb	.2
-	; mov	edx, 256 ; offset
-	mov	dh, 1
+	mov	bh, 1	 ; offset
 %endif
 	READ_REP0 eax
 	; cl = -1
@@ -166,13 +166,12 @@ _case_lit:
 	mov	ch, 0
 	; ch = 0, bl = 1
 .1:	xor	ch, bl
-	and	dh, ch
+	and	bh, ch
 .2:	shl	ecx, 1
-	mov	esi, edx
+	mov	esi, ebx
 	and	esi, ecx
-	add	esi, edx
 	add	esi, ebx
-	add	esi, r10d
+	add	esi, edx
 	call	_rc_bit
 	adc	bl, bl
 	jnc	.1

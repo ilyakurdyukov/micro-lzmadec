@@ -116,9 +116,11 @@ _rc_norm:
 
 _loop1:	pop	_rc_bit
 _loop:	mov	rcx, Dest
-	mov	bh, cl
+	mov	bh, 0x55
+_rel_lp:
 	pop	rsi		; _state
 	push	rsi
+	and	bh, cl
 	and	ecx, 0x55	; posState
 _rel_pb:
 	shl	esi, 4		; state * 16
@@ -129,14 +131,13 @@ _rel_pb:
 	cdq
 	pop	rax
 	jc	_case_rep
-	and	bh, 0x55
-_rel_lp:
 	shl	ebx, 0x55
 _rel_lc:
 	mov	bl, 0
-	lea	r11d, [rbx+rbx*2+2048]
+	lea	edx, [rbx+rbx*2+2048]
 _case_lit:
-	lea	ebx, [rdx+1]
+	push	1
+	pop	rbx
 	; state = 0x546543210000 >> state * 4 & 15;
 	; state = state < 4 ? 0 : state - (state > 9 ? 6 : 3)
 .4:	add	al, -3
@@ -148,12 +149,11 @@ _case_lit:
 %if 0	; -2 bytes, but slower
 	; will read one byte before Dest
 	add	al, -4
-	sbb	dh, dh
+	sbb	bh, bh
 %else
 	cmp	al, 7-3
 	jb	.2
-	; mov	edx, 256 ; offset
-	mov	dh, 1
+	mov	bh, 1	 ; offset
 %endif
 	mov	eax, _rep0
 	neg	rax
@@ -162,13 +162,12 @@ _case_lit:
 	mov	ch, 0
 	; ch = 0, bl = 1
 .1:	xor	ch, bl
-	and	dh, ch
+	and	bh, ch
 .2:	shl	ecx, 1
-	mov	esi, edx
+	mov	esi, ebx
 	and	esi, ecx
-	add	esi, edx
 	add	esi, ebx
-	add	esi, r11d
+	add	esi, edx
 	call	_rc_bit
 	adc	bl, bl
 	jnc	.1
