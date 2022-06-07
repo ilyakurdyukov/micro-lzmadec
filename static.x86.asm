@@ -136,17 +136,16 @@ _rel_pb:
 	shl	ebx, 0x55
 _rel_lc:
 	mov	bl, 0
-	lea	edx, [ebx+ebx*2+2048]
+	lea	ecx, [ebx+ebx*2+2048]
 _case_lit:
-	xor	ebx, ebx
+	lea	ebx, [edx+1]
 	; state = 0x546543210000 >> state * 4 & 15;
 	; state = state < 4 ? 0 : state - (state > 9 ? 6 : 3)
 .4:	add	al, -3
-	sbb	cl, cl
-	and	al, cl
+	sbb	dl, dl
+	and	al, dl
 	cmp	al, 7
 	jae	.4
-	inc	ebx
 	push	eax		; _state
 %if 0	; -2 bytes, but slower
 	; will read one byte before Dest
@@ -159,17 +158,15 @@ _case_lit:
 %endif
 	mov	eax, Dest
 	sub	eax, _rep0
-	; cl = -1
-	xor	cl, [eax]
-	mov	ch, 0
-	; ch = 0, bl = 1
-.1:	xor	ch, bl
-	and	bh, ch
-.2:	shl	ecx, 1
+	; dl = -1, dh = 0, bl = 1
+	xor	dl, [eax]
+.1:	xor	dh, bl
+	and	bh, dh
+.2:	shl	edx, 1
 	mov	esi, ebx
-	and	esi, ecx
+	and	esi, edx
 	add	esi, ebx
-	add	esi, edx
+	add	esi, ecx
 	call	_rc_bit
 	adc	bl, bl
 	jnc	.1
