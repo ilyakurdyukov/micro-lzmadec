@@ -126,12 +126,11 @@ _loop:	xor	r15d, r15d	; _len
 	mov	bh, cl
 	pop	rsi		; _state
 	push	rsi
-	and	ecx, _pb	; posState
-	; ecx = 0..255
-	shl	esi, 4		; state * 16
+	and	ecx, _pb	; posState, 0..15
+	shl	esi, 5		; state * 16
 
 	; probs + state * 16 + posState
-	add	esi, ecx
+	lea	esi, [rsi+rcx*2+4*12]
 	call	_rc_bit
 	cdq
 	pop	rax
@@ -175,9 +174,8 @@ _case_lit:
 	jmp	_copy.2
 
 _case_rep:
-	mov	dl, 192/2
-	lea	ebx, [rsi+rdx*2]	; IsRep0Long, 192
-	lea	esi, [rax+rdx*4]	; IsRep, 384 + state
+	mov	ebx, esi
+	lea	esi, [rdx+rax*4]	; IsRep
 	add	al, -7
 	sbb	al, al
 	and	al, 3
@@ -197,15 +195,13 @@ _case_rep:
 	mov	_rep3, eax
 %endif
 	; state = state < 7 ? 0 : 3
-;	lea	esi, [rdx*8+rdx]		; -2, 818+46 = 192/2*9
-;	lea	esi, [rdx*8+rdx+818-192/2*9]	; -1
-;	mov	esi, 818	; LenCoder
+	mov	dl, 819/9	; LenCoder
 	jmp	_case_len
 
-.2:	add	esi, 12
+.2:	inc	esi
 	call	_rc_bit
 	jc	.3
-	mov	esi, ebx
+	lea	esi, [rbx+1]	; IsRep0Long
 	call	_rc_bit
 	jc	.5
 	; state = state < 7 ? 9 : 11
@@ -214,8 +210,8 @@ _case_rep:
 
 .3:	mov	dl, 3
 	mov	ebx, _rep0
-.6:	dec	edx
-	lea	esi, [rsi+12]
+.6:	inc	esi
+	dec	edx
 	xchg	[rbp-loc_rep+rdx*4], ebx
 	je	.4
 	call	_rc_bit
@@ -223,8 +219,7 @@ _case_rep:
 .4:	mov	_rep0, ebx
 .5:	; state = state < 7 ? 8 : 11
 	or	_state, 8
-;	mov	esi, 1332+46	; RepLenCoder
-	mov	dl, 154		; 154*9 = 1332+54
+	mov	dl, 1332/9	; RepLenCoder
 _case_len:
 	lea	esi, [rdx*8+rdx]
 	cdq
@@ -301,7 +296,7 @@ _case_model:
 	bts	ebx, ecx
 .3:	cmp	ecx, 4
 	jne	.1
-	mov	edx, 802+16	; Align
+	mov	edx, 688	; Align
 .4:
 .5:	push	rsi
 	add	esi, edx
