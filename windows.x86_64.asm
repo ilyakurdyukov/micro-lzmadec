@@ -16,9 +16,9 @@
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 ; THE SOFTWARE.
 
-; build: nasm -f bin -O9 lzmadec.x86_64.asm -o lzmadec && chmod +x lzmadec
+; build: nasm -f bin -O9 windows.x86_64.asm -o lzmadec64.exe
 ;
-; usage: ./lzmadec < input.lzma > output.bin
+; usage: lzmadec64.exe < input.lzma > output.bin
 ;
 ; exit codes:
 ; 0 - success
@@ -28,52 +28,105 @@
 ; 4 - error at decoding, lzma stream is damaged
 ; 5 - cannot write output
 
-; Ways to make the code even smaller:
-; 1. Place code in unused fields in the ELF header.
-; 2. Remove error reporting via exit codes.
-; 3. Immediate writing of each byte (makes decompression very slow). 
-
-%ifndef @pie
-%define @pie 0
-%endif
-
 BITS 64
-%if @pie
 ORG 0
-%else
-ORG 0x400000
-%endif
-
-%define @sys_read 0
-%define @sys_write 1
-%define @sys_mmap 9
-%define @sys_exit 60
-
 section .text
 
-%define @bits 64
+_mz_header:
+db 'MZ'	; magic
+dw 0, 0, 0, 0, 0, 0, 0
+dw 0, 0, 0, 0, 0, 0, 0, 0
+dw 0, 0, 0, 0, 0, 0, 0, 0
+dw 0, 0, 0, 0, 0, 0
+dd _pe_header - _mz_header
 
-_code_seg:
-_elf:	db 0x7f,'ELF',2,1,1,0	; e_ident
+%define _image_base 0x400000
+
+_pe_header:
+db 'PE',0,0
+dw 0x8664	; AMD64
+dw 1		; number of sections
+dd 0		; time stamp
+dd 0, 0		; symbol table (offset, count)
+; size of optional header
+dw _opt_header_end - _opt_header
+dw 0x22e	; characteristics
+_opt_header:
+dw 0x20b	; magic
+db 2, 34	; linker version (major, minor)
+dd _text_end - _text		; size of code
+dd 0		; size of initialized data
+dd 0		; size of uninitialized data
+dd 0x1000 + (_start - _text)	; entry point
+dd 0x1000	; base of code
+dq _image_base	; image base
+dd 0x1000	; section alignment
+dd 0x200	; file alignment
+dw 4, 0		; OS version (major, minor)
+dw 0, 0		; image version (major, minor)
+dw 5, 2		; subsystem version (major, minor)
+dd 0		; Win32 version
+dd 0x2000	; size of image
+dd _text - _mz_header	; size of header
+dd 0		; checksum
+dw 3		; subsystem (1 - native, 2 - GUI, 3 - console)
+dw 0		; DLL flag
+dq 2 << 20, 0x1000	; stack reserve and commit
+dq 2 << 20, 0x1000	; heap reserve and commit
+dd 0		; loader flags
+dd 2		; number of dirs
+
+%define RVA(x) (x - _text) + 0x1000
+
+dd 0, 0		; export
+dd RVA(_import), _import_end - _import
+_opt_header_end:
+
+db ".text",0,0,0
+; virtual size and address
+dd 0x1000, 0x1000
+; file size and address
+dd _text_end - _text, _text - _mz_header
+dd 0, 0	; relocs, linenumbers
+dw 0, 0	; relocs count, linenumbers count
+dd 0x60000060	; attributes
+
+align 512, db 0
+_text:
+
+_import:
+	dd 0, 0, 0, RVA(_name_kernel32), RVA(_kernel32_tab)
+	dd 0, 0, 0, 0, 0
+_import_end:
+
+align 8, db 0
+_kernel32_tab:
+	dq RVA(_name_ExitProcess)
+	dq RVA(_name_VirtualAlloc)
+	dq RVA(_name_ReadFile)
+	dq RVA(_name_WriteFile)
+	dq RVA(_name_GetStdHandle)
 	dq 0
-	dw 2+@pie	; e_type
-	dw 62		; e_machine
-	dd 1		; e_version
-	dq _start	; e_entry
-	dq .ph-_elf	; e_phoff
-	dq 0		; e_shoff
-	dd 0		; e_flags
-	dw 0x40		; e_ehsize
-	dw 0x38, 1	; e_phentsize, e_phnum
-	dw 0x40, 0	; e_shentsize, e_shnum
-	dw 0		; e_shstrndx
-.ph:	dd 1, 5			; p_type, p_flags
-	dq 0			; p_offset
-	dq _code_seg		; p_vaddr
-	dq _code_seg		; p_paddr (unused)
-	dq _code_end-_code_seg	; p_filesz
-	dq _code_end-_code_seg	; p_memsz
-	dq 0x1000		; p_align
+
+%macro def_export 1
+align 2, db 0
+_name_%1:
+dw 0
+%defstr export_temp %1
+db export_temp, 0
+%xdefine %1 qword [rel _kernel32_tab+export_next]
+%assign export_next export_next+8
+%endmacro
+
+_name_kernel32:
+db "kernel32.dll", 0
+
+%assign export_next 0
+def_export ExitProcess
+def_export VirtualAlloc
+def_export ReadFile
+def_export WriteFile
+def_export GetStdHandle
 
 %assign loc_pos 0
 %macro LOC 1-3 4, dword
@@ -84,6 +137,9 @@ _elf:	db 0x7f,'ELF',2,1,1,0	; e_ident
 %xdefine %1 %3 [rbp-loc_pos]
 %endif
 %endmacro
+LOC _stdout
+LOC _stdin
+
 LOC _dummyA, 8
 LOC OutSize, 8, qword
 LOC DictSize
@@ -109,9 +165,6 @@ LOC _state, 8
 %define _rc_bit rdi
 %define Pos r9d
 %define Total r13
-
-; 12*5 - (12*2+6+4) = 26 ; call rdi
-; 12*5 - (12*3+5) = 19 ; call [rbp-N]
 
 %macro READ_REP0 1
 	mov	%1, Pos
@@ -342,10 +395,9 @@ _end:	neg	Code
 	jc	_copy.4
 	push	0	; exit code
 .2:	call	_write
-.0:	pop	rdi
-.1:	push	@sys_exit
-	pop	rax
-	syscall
+.0:	pop	rcx
+.1:	and	rsp, -16
+	call	ExitProcess
 
 _rc_norm:
 	cmp	byte [rbp-loc_range+3], 0
@@ -357,78 +409,100 @@ _rc_norm:
 	shl	Code, 8
 %endif
 	push	rcx
-	push	rsi
-	push	rdi
-	; ax dx si di + cx r11
-	xor	edi, edi	; 0 (stdin)
-	lea	rsi, [rbp-loc_code]
-	lea	edx, [rdi+1]
-%if @sys_read == 0
-	mov	eax, edi
-%else
-	lea	eax, [rdi+@sys_read]
-%endif
-	syscall
+	push	rdx
+	push	r9
+	lea	rdx, [rbp-loc_code]
+	mov	ecx, _stdin
+	xor	eax, eax
+	lea	r8d, [rax+1]
+	push	rax
+	mov	r9, rsp
+	enter	40, 0
+	and	rsp, -16
+	mov	[rsp+32], rax
+	call	ReadFile
+	leave
+	neg	eax
+	pop	rdx
+	pop	r9
+	sbb	eax, eax
+	and	eax, edx
+	pop	rdx
+	pop	rcx
 	push	3
 	dec	eax
 	jne	_end.2
 	pop	rax
-	pop	rdi
-	pop	rsi
-	pop	rcx
 .1:	ret
 
 _write:
 	cdq
-	xchg	edx, Pos
-	mov	rsi, r12
-	push	rdi
-	push	1
-	pop	rdi
-%if @sys_write == 1
-	mov	eax, edi
-%else
-	lea	eax, [rdi+@sys_write-1]
-%endif
-	syscall
+	mov	r8d, Pos
+	mov	ecx, _stdout
+	push	r9
+	push	rdx
+	mov	r9, rsp
+	enter	40, 0
+	and	rsp, -16
+	mov	[rsp+32], rdx
+	mov	rdx, r12
+	call	WriteFile
+	leave
+	neg	eax
+	pop	rdx
+	pop	r9
+	sbb	eax, eax
+	and	eax, edx
 	push	5
-	cmp	eax, edx
+	sub	Pos, eax
 	jne	_end.2
 	pop	rax
-	pop	rdi
 	ret
 
 _start:	enter	loc_pos1, 0
-	xor	edi, edi	; 0 (stdin)
+	xor	ebx, ebx
+	push	rbx
+	push	rbx
+	sub	rsp, 32
+	mov	rdi, GetStdHandle
+	lea	ecx, [rbx-10]	; STD_INPUT_HANDLE
+	call	rdi
+	mov	_stdin, eax
+	lea	ecx, [rbx-11]	; STD_OUTPUT_HANDLE
+	call	rdi
+	mov	_stdout, eax
+
+	lea	rsi, [rbp-loc_pos1+3]
+	lea	r9, [rbp-loc_pos1-8]
+	lea	r8d, [rbx+5+8+5]
+	push	rsi
+	pop	rdx
+	mov	ecx, _stdin
+	call	ReadFile
+	neg	eax
+	sbb	eax, eax
+	add	rsp, 40
+	pop	rdx
+	and	edx, eax
+
 	or	eax, -1		; 0xffffffff
-	; movd xmm0, eax [4]
-	; shufps xmm0, xmm0, 0 [4]
 	add	rax, 2		; 0x100000001
 	push	rax
 	push	rax
-	; (3)+1+4+8+(1)+4
-	lea	edx, [rdi+5+8+5]
-	lea	rsi, [rbp-loc_pos1+3]
-%if @sys_read == 0
-	mov	eax, edi
-%else
-	lea	eax, [rdi+@sys_read]
-%endif
-	syscall
 	mov	ecx, [rsi+14]
 	bswap	ecx
 	push	rcx	; Code
 	push	-1	; Range
 	or	dh, [rsi+13]
-	sub	edx, eax
+	sub	edx, 5+8+5
 	push	1
 .err:	jne	_end.0
-	; rdx = 0, rax = 5+8+5, rdi = 0
 	lodsb
 	cmp	al, 9*5*5
 	jae	_end.0
 	mov	ebx, (768<<5)+31
 	clc
+	cdq
 .1:	adc	edx, edx
 	add	al, -9*5
 	jc	.1
@@ -442,7 +516,7 @@ _start:	enter	loc_pos1, 0
 	shl	ebx, cl
 	push	rcx	; _lc, _lp
 %if 1	; -3, allocates 404 bytes more
-	add	bh, 8	; 2048 >> 8
+	add	bh, 8
 %else
 	add	ebx, 1846
 %endif
@@ -454,28 +528,27 @@ _start:	enter	loc_pos1, 0
 	xchg	eax, edx
 .3:	lea	rsi, [rax+rbx*2]
 
-	xor	r9, r9	; off
-	or	r8, -1	; fd
-	; xor	edi, edi	; addr
-	lea	eax, [rdi+@sys_mmap]
-	; prot: 1-read, 2-write, 4-exec
-	lea	edx, [rdi+3]
-	; map: 2-private, 0x20-anonymous
-	lea	r10d, [rdi+0x22]
-	syscall
-	; err = ret >= -4095u
-	; (but negative pointers aren't used)
-	add	rdi, rax
+	push	rsi
+	pop	rdx
+	xor	ecx, ecx
+	mov	r8d, 0x1000	; MEM_COMMIT
+	lea	r9d, [rcx+4]	; PAGE_READWRITE
+	sub	rsp, 32+8
+	call	VirtualAlloc
+	add	rsp, 32+8
+	test	rax, rax
+	xchg	rdi, rax
 	push	2
-	js	.err
+	je	.err
+
 	mov	ecx, ebx
-	xchg	r14, rax	; _prob
+	mov	r14, rdi	; _prob
 	mov	ax, 1<<10
 	rep	stosw
 	push	rcx		; _state
 	mov	r12, rdi	; Dict
 	xor	ebx, ebx	; Prev = 0
-	; Pos = r9 = 0
+	mov	Pos, ecx
 	xor	Total, Total
 	call	_copy.9
 _rc_bit1:
@@ -499,5 +572,6 @@ _rc_bit1:
 	pop	rdx
 	ret
 
-_code_end:
+align 512, db 0
+_text_end:
 

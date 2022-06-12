@@ -2,17 +2,22 @@
 
 Code Golf in Assembly with the goal of writing the smallest LZMA decoder.
 
-Includes `x86_64` Linux version and `x86`/`x86_64` static version for use in compressed executables (see `test_static.c` for an example of usage).
+Includes `x86_64` version for Linux and Windows, and `x86`/`x86_64` static version for use in compressed executables (see `test_static.c` for an example of usage).
 
 Needs `nasm` to compile.
 
 ### Results
 
 x86_64 Linux binary: 824 bytes (120 headers, 704 code)  
+x86_64 Windows binary: 1536 bytes (a lot of headers, tables and padding...)  
 x86_64 static: 483 bytes  
 x86 static: 480 bytes  
 
 Yet it can be improved a little, especially the static version.
+
+### Limitations
+
+LZMA archives can have a dictionary size of up to 4 GB, your OS must be able to allocate a buffer of this size for this decoder to work.
 
 ### Probability Model Map
 
