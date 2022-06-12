@@ -421,18 +421,17 @@ _rc_norm:
 	and	rsp, -16
 	mov	[rsp+32], rax
 	call	ReadFile
+	test	eax, eax
 	leave
-	neg	eax
 	pop	rdx
-	pop	r9
-	sbb	eax, eax
-	and	eax, edx
-	pop	rdx
-	pop	rcx
 	push	3
-	dec	eax
+	je	_end.2
+	dec	edx
 	jne	_end.2
 	pop	rax
+	pop	r9
+	pop	rdx
+	pop	rcx
 .1:	ret
 
 _write:
@@ -465,19 +464,19 @@ _start:	enter	loc_pos1, 0
 	push	rbx
 	sub	rsp, 32
 	mov	rdi, GetStdHandle
-	lea	ecx, [rbx-10]	; STD_INPUT_HANDLE
-	call	rdi
-	mov	_stdin, eax
 	lea	ecx, [rbx-11]	; STD_OUTPUT_HANDLE
 	call	rdi
 	mov	_stdout, eax
+	lea	ecx, [rbx-10]	; STD_INPUT_HANDLE
+	call	rdi
+	mov	_stdin, eax
+	xchg	ecx, eax
 
 	lea	rsi, [rbp-loc_pos1+3]
 	lea	r9, [rbp-loc_pos1-8]
 	lea	r8d, [rbx+5+8+5]
 	push	rsi
 	pop	rdx
-	mov	ecx, _stdin
 	call	ReadFile
 	neg	eax
 	sbb	eax, eax
@@ -485,7 +484,8 @@ _start:	enter	loc_pos1, 0
 	pop	rdx
 	and	edx, eax
 
-	or	eax, -1		; 0xffffffff
+	; eax = -1, if no error at reading
+;	or	eax, -1		; 0xffffffff
 	add	rax, 2		; 0x100000001
 	push	rax
 	push	rax
@@ -533,9 +533,9 @@ _start:	enter	loc_pos1, 0
 	xor	ecx, ecx
 	mov	r8d, 0x1000	; MEM_COMMIT
 	lea	r9d, [rcx+4]	; PAGE_READWRITE
-	sub	rsp, 32+8
+	enter	32, 0
 	call	VirtualAlloc
-	add	rsp, 32+8
+	leave
 	test	rax, rax
 	xchg	rdi, rax
 	push	2
