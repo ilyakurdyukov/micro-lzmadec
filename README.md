@@ -8,9 +8,9 @@ Needs `nasm` to compile.
 
 ### Results
 
-x86_64 Linux binary: 828 bytes (120 headers, 708 code)  
-x86_64 static: 489 bytes  
-x86 static: 487 bytes  
+x86_64 Linux binary: 826 bytes (120 headers, 706 code)  
+x86_64 static: 487 bytes  
+x86 static: 485 bytes  
 
 Yet it can be improved a little, especially the static version.
 
@@ -36,9 +36,9 @@ Literal: 1846, 0
 ##### New:
 ```
 IsRep{,G0,G1,G2}: 0, 4*12       # state * 4
-IsMatch, IsRep0Long: 48, 2*192	# (state << 4 | posState) * 2
-PosSlot: 432, 256
-Align: 688, 16
+Align: 48, 16
+IsMatch, IsRep0Long: 64, 2*192	# (state << 4 | posState) * 2
+PosSlot: 448, 256
 SpecPos: 704, 114 + 1 (padding)
 LenCoder: 819, 2 + 511
 RepLenCoder: 1332, 2 + 511 + 203 (padding)

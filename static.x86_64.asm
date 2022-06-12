@@ -126,7 +126,7 @@ _rel_pb:
 	shl	esi, 5		; state * 16
 
 	; probs + state * 16 + posState
-	lea	esi, [rsi+rcx*2+4*12]
+	lea	esi, [rsi+rcx*2+64]
 	call	_rc_bit
 	cdq
 	pop	rax
@@ -184,10 +184,10 @@ _case_rep:
 	movups	xmm0, [rbp-loc_rep]
 	movups	[rbp-loc_rep-4], xmm0
 %else
-	mov	eax, _rep0
-	xchg	_rep1, eax
-	xchg	_rep2, eax
-	mov	_rep3, eax
+	mov	esi, _rep0
+	xchg	_rep1, esi
+	xchg	_rep2, esi
+	mov	_rep3, esi
 %endif
 	; state = state < 7 ? 0 : 3
 	mov	dl, 819/9	; LenCoder
@@ -252,7 +252,7 @@ _case_dist:
 	sub	ebx, 3+2-1
 	sbb	eax, eax
 	and	ebx, eax
-	lea	ebx, [rdx-1+rbx*8+(432-128)/8+(3+2)*8]	; PosSlot
+	lea	ebx, [rdx-1+rbx*8+(432+16-128)/8+(3+2)*8]	; PosSlot
 	; BitTree
 	push	rdx
 .5:	lea	esi, [rdx+rbx*8]
@@ -285,7 +285,7 @@ _case_model:
 	bts	ebx, ecx
 .3:	cmp	ecx, 4
 	jne	.1
-	mov	edx, 688	; Align
+	lea	edx, [rcx+48-4]		; Align
 .4:
 .5:	push	rsi
 	add	esi, edx
