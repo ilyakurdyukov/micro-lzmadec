@@ -2,7 +2,7 @@
 ; Copyright (c) 2022, Ilya Kurdyukov
 ; All rights reserved.
 ;
-; Micro LZMA decoder utility for x86_64 Linux
+; Micro LZMA decoder utility for x86_64 Windows
 ;
 ; This software is distributed under the terms of the
 ; Creative Commons Attribution 3.0 License (CC-BY 3.0)
