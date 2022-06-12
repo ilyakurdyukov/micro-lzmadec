@@ -78,7 +78,8 @@ _rel_tsize:
 	shl	eax, 10
 	rep	stosw
 	push	ecx		; _state
-	xor	ebx, ebx	; Prev = 0
+	; bh=4, but it doesn't matter
+	xchg	ebx, eax	; Prev = 0
 	call	_loop1
 _rc_bit1:
 	push	edx
@@ -175,7 +176,7 @@ _case_lit:
 
 _case_rep:
 	mov	ebx, esi
-	lea	esi, [edx+eax*4]	; IsRep
+	lea	esi, [edx+eax*4+16]	; IsRep
 	add	al, -7
 	sbb	al, al
 	and	al, 3
@@ -280,14 +281,14 @@ _case_model:
 .1:	dec	ecx
 	call	_rc_norm
 	shr	Range, 1
-	mov	eax, Range
-	cmp	Code, eax
+	mov	edx, Range
+	cmp	Code, edx
 	jb	.3
-	sub	Code, eax
+	sub	Code, edx
 	bts	ebx, ecx
 .3:	cmp	ecx, 4
 	jne	.1
-	lea	edx, [ecx+48-4]		; Align
+	cdq		; Align
 .4:
 .5:	push	esi
 	add	esi, edx

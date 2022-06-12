@@ -71,13 +71,14 @@ _start:	enter	0, 0
 	mov	ecx, 0x12345678
 _rel_tsize:
 	mov	rdi, Temp
-	mov	ax, 1<<10
+	shl	eax, 10
 	rep	stosw
 	push	0x12345678	; Code
 _rel_code:
 	push	-1		; Range
 	push	rcx		; _state
-	xor	ebx, ebx	; Prev = 0
+	; bh=4, but it doesn't matter
+	xchg	ebx, eax	; Prev = 0
 	call	_loop1
 _rc_bit1:
 	push	rdx
@@ -173,7 +174,7 @@ _case_lit:
 
 _case_rep:
 	mov	ebx, esi
-	lea	esi, [rdx+rax*4]	; IsRep
+	lea	esi, [rdx+rax*4+16]	; IsRep
 	add	al, -7
 	sbb	al, al
 	and	al, 3
@@ -279,14 +280,14 @@ _case_model:
 .1:	dec	ecx
 	call	_rc_norm
 	shr	Range, 1
-	mov	eax, Range
-	cmp	Code, eax
+	mov	edx, Range
+	cmp	Code, edx
 	jb	.3
-	sub	Code, eax
+	sub	Code, edx
 	bts	ebx, ecx
 .3:	cmp	ecx, 4
 	jne	.1
-	lea	edx, [rcx+48-4]		; Align
+	cdq		; Align
 .4:
 .5:	push	rsi
 	add	esi, edx
