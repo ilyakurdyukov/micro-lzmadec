@@ -45,15 +45,15 @@ _code:
 %xdefine %1 %3 [ebp-loc_pos]
 %endif
 %endmacro
+LOC Code
+%assign loc_code loc_pos
+LOC Range
+%assign loc_range loc_pos
 LOC _rep0
 LOC _rep1
 LOC _rep2
 LOC _rep3
 %assign loc_rep loc_pos
-LOC Code
-%assign loc_code loc_pos
-LOC Range
-%assign loc_range loc_pos
 LOC _state
 
 %define _rc_bit edi
@@ -63,6 +63,9 @@ LOC _state
 %define Temp dword [ebp+4]
 
 _start:	enter	0, 0
+	push	0x12345678	; Code
+_rel_code:
+	push	-1		; Range
 	xor	eax, eax
 	inc	eax
 	push	eax
@@ -74,9 +77,6 @@ _rel_tsize:
 	mov	edi, Temp
 	shl	eax, 10
 	rep	stosw
-	push	0x12345678	; Code
-_rel_code:
-	push	-1		; Range
 	push	ecx		; _state
 	xor	ebx, ebx	; Prev = 0
 	call	_loop1
@@ -182,10 +182,14 @@ _case_rep:
 	push	eax		; _state
 	call	_rc_bit
 	jc	.2
-	mov	esi, _rep0
-	xchg	_rep1, esi
-	xchg	_rep2, esi
-	mov	_rep3, esi
+	pop	eax		; _state
+	pop	ebx		; r3
+	pop	ebx		; ebx = r2
+	pop	esi		; esi = r1
+	push	_rep0		; r1 = r0
+	push	esi		; r2 = r1
+	push	ebx		; r3 = r2
+	push	eax		; _state
 	; state = state < 7 ? 0 : 3
 	mov	dl, 819/9	; LenCoder
 	jmp	_case_len
@@ -221,14 +225,15 @@ _case_len:
 	lea	ebx, [esi+ecx*8]	; +1 unnecessary
 	mov	cl, 3
 	jnc	.4
-	sub	ebx, -128
 	inc	edx	; edx = 8/8
 	call	_rc_bit
-	jnc	.4
+	jnc	.3
+	; the first byte of BitTree tables is not used,
+	; so it's safe to add 255 instead of 256 here
+	lea	ebx, [esi+127]
 	mov	cl, 8
-	add	edx, 16/8-(1<<8)/8
-	mov	ebx, esi
-	inc	bh			; +1 unnecessary
+	add	edx, 16/8-(1<<8)/8	; edx = -29
+.3:	sub	ebx, -128	; +128
 .4:	; BitTree
 	push	1
 	pop	esi

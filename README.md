@@ -8,9 +8,9 @@ Needs `nasm` to compile.
 
 ### Results
 
-x86_64 Linux binary: 826 bytes (120 headers, 706 code)  
-x86_64 static: 487 bytes  
-x86 static: 485 bytes  
+x86_64 Linux binary: 825 bytes (120 headers, 705 code)  
+x86_64 static: 486 bytes  
+x86 static: 482 bytes  
 
 Yet it can be improved a little, especially the static version.
 

@@ -182,6 +182,7 @@ _case_rep:
 	push	rax		; _state
 	call	_rc_bit
 	jc	.2
+	; r3=r2, r2=r1, r1=r0
 %if 1
 	; [3*4 -> 4*2, -4]
 	movups	xmm0, [rbp-loc_rep]
@@ -189,9 +190,8 @@ _case_rep:
 %else
 	; 0 0 1 2
 	; shufps xmm0, xmm0, 0x90 [3*4 -> 4, -9]
-	mov	esi, _rep0
-	xchg	_rep1, esi
-	xchg	_rep2, esi
+	mov	rsi, [rbp-loc_rep+8]
+	xchg	rsi, [rbp-loc_rep+4]
 	mov	_rep3, esi
 %endif
 	; state = state < 7 ? 0 : 3
@@ -228,14 +228,15 @@ _case_len:
 	lea	ebx, [rsi+rcx*8]	; +1 unnecessary
 	mov	cl, 3
 	jnc	.4
-	sub	ebx, -128
 	mov	dl, 8/8
 	call	_rc_bit
-	jnc	.4
+	jnc	.3
+	; the first byte of BitTree tables is not used,
+	; so it's safe to add 255 instead of 256 here
+	lea	ebx, [rsi+127]
 	mov	cl, 8
-	add	edx, 16/8-(1<<8)/8
-	mov	ebx, esi
-	inc	bh			; +1 unnecessary
+	add	edx, 16/8-(1<<8)/8	; edx = -29
+.3:	sub	ebx, -128	; +128
 .4:	; BitTree
 	push	1
 	pop	rsi
