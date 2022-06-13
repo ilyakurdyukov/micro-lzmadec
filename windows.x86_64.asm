@@ -103,6 +103,7 @@ align 8, db 0
 _kernel32_tab:
 	dq RVA(_name_ExitProcess)
 	dq RVA(_name_VirtualAlloc)
+_ReadWriteFile:
 	dq RVA(_name_ReadFile)
 	dq RVA(_name_WriteFile)
 	dq RVA(_name_GetStdHandle)
@@ -408,55 +409,48 @@ _rc_norm:
 	shl	Range, 8
 	shl	Code, 8
 %endif
-	push	rcx
-	push	rdx
-	push	r9
-	lea	rdx, [rbp-loc_code]
-	mov	ecx, _stdin
 	xor	eax, eax
+	push	rdx
+	push	3
+	lea	rdx, [rbp-loc_code]
 	lea	r8d, [rax+1]
-	push	rax
+.2:	push	rcx
+	mov	ecx, [rbp-8+rax*4]
+	push	r9
+	push	r8
+	push	0
 	mov	r9, rsp
 	enter	40, 0
 	and	rsp, -16
-	mov	[rsp+32], rax
-	call	ReadFile
+	and	qword [rsp+32], 0
+%if 0	; 4 byte less, but position dependent
+	call	qword [RVA(_ReadWriteFile)+_image_base+rax*8]
+%else
+	lea	r10, [rel _ReadWriteFile]
+	call	qword [r10+rax*8]
+%endif
 	test	eax, eax
 	leave
 	pop	rdx
-	push	3
-	je	_end.2
-	dec	edx
-	jne	_end.2
 	pop	rax
 	pop	r9
-	pop	rdx
 	pop	rcx
+	je	_end.2
+	cmp	edx, eax
+	jne	_end.2
+	pop	rax
+	pop	rdx
 .1:	ret
 
 _write:
-	cdq
-	mov	r8d, Pos
-	mov	ecx, _stdout
-	push	r9
+	xor	r8d, r8d
+	xchg	r8d, Pos
 	push	rdx
-	mov	r9, rsp
-	enter	40, 0
-	and	rsp, -16
-	mov	[rsp+32], rdx
-	mov	rdx, r12
-	call	WriteFile
-	leave
-	neg	eax
-	pop	rdx
-	pop	r9
-	sbb	eax, eax
-	and	eax, edx
-	push	5
-	sub	Pos, eax
-	jne	_end.2
+	push	1
 	pop	rax
-	ret
+	mov	rdx, r12
+	push	5
+	jmp	_rc_norm.2
 
 _start:	enter	loc_pos1, 0
 	xor	ebx, ebx
