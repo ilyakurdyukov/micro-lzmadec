@@ -356,47 +356,41 @@ _rc_norm:
 	shl	Range, 8
 	shl	Code, 8
 %endif
-	push	rcx
 	push	rsi
 	push	rdi
+	push	3
 	; ax dx si di + cx r11
 	xor	edi, edi	; 0 (stdin)
 	lea	rsi, [rbp-loc_code]
 	lea	edx, [rdi+1]
-%if @sys_read == 0
-	mov	eax, edi
-%else
+%if @sys_read != 0 || @sys_write != 1
 	lea	eax, [rdi+@sys_read]
 %endif
+.2:	push	rcx
+%if @sys_read == 0 && @sys_write == 1
+	mov	eax, edi
+%endif
 	syscall
-	push	3
-	dec	eax
+	cmp	eax, edx
+	pop	rcx
 	jne	_end.2
 	pop	rax
 	pop	rdi
 	pop	rsi
-	pop	rcx
 .1:	ret
 
 _write:
+	push	rsi
+	push	rdi
+	push	5
 	cdq
+	lea	edi, [rdx+1]
+%if @sys_read != 0 || @sys_write != 1
+	lea	eax, [rdx+@sys_write]
+%endif
 	xchg	edx, Pos
 	mov	rsi, r12
-	push	rdi
-	push	1
-	pop	rdi
-%if @sys_write == 1
-	mov	eax, edi
-%else
-	lea	eax, [rdi+@sys_write-1]
-%endif
-	syscall
-	push	5
-	cmp	eax, edx
-	jne	_end.2
-	pop	rax
-	pop	rdi
-	ret
+	jmp	_rc_norm.2
 
 _start:	enter	loc_pos1, 0
 	xor	edi, edi	; 0 (stdin)
