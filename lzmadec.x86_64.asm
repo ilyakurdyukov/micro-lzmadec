@@ -86,7 +86,7 @@ _elf:	db 0x7f,'ELF',2,1,1,0	; e_ident
 %endmacro
 LOC _dummyA, 8
 LOC OutSize, 8, qword
-LOC DictSize
+LOC DictSize1
 LOC _dummyB
 %assign loc_pos1 loc_pos	; 24
 LOC _rep0
@@ -103,6 +103,7 @@ LOC _dummy1, 8
 LOC _pb, 8
 LOC _lp, 7, none
 LOC _lc, 1, none
+LOC DictSize, 8
 LOC _dummy2, 8
 LOC _state, 8
 
@@ -446,7 +447,8 @@ _start:	enter	loc_pos1, 0
 	cmp	eax, edx
 	jae	.3
 	xchg	eax, edx
-.3:	lea	rsi, [rax+rbx*2]
+.3:	push	rax	; DictSize
+	lea	rsi, [rax+rbx*2]
 
 	xor	r9, r9	; off
 	or	r8, -1	; fd
