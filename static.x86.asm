@@ -93,15 +93,14 @@ _rc_bit1:
 	imul	edx, eax	; bound
 	sub	Range, edx
 	sub	Code, edx
-	pushf
 	jae	.1
 	mov	Range, edx
 	add	Code, edx
+	cdq
 	sub	eax, 2048-31
 .1:	shr	eax, 5		; eax >= 0
 	sub	[esi], ax
-	popf
-	cmc
+	neg	edx
 	pop	esi
 	pop	edx
 	ret
