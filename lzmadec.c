@@ -58,9 +58,9 @@ int main(int argc, char **argv) {
 	DBG_LOG("lc = %u, lp = %u, pb = %u\n", lc, lp, pb);
 	DBG_LOG("DictSize = %d, numProbs = %d\n", dict_size, num_probs);
 
-	dict = malloc(dict_size + num_probs * sizeof(*probs));
-	if (!dict) return 2;
-	probs = (uint16_t*)(dict + dict_size);
+	probs = malloc(dict_size + num_probs * sizeof(*probs));
+	if (!probs) return 2;
+	dict = (uint8_t*)(probs + num_probs);
 	for (i = 0; i < num_probs; i++) probs[i] = 1024;
 
 	while (max_size != out) {
@@ -158,8 +158,8 @@ int main(int argc, char **argv) {
 					max_size - out < len) return 4;
 			do {
 				value = dict[(pos < rep0 ? dict_size : 0) + pos - rep0];
-copy:		out++;
-				dict[pos++] = value;
+copy:
+				out++; dict[pos++] = value;
 				if (pos == dict_size) {
 					if (fwrite(dict, 1, pos, stdout) != pos) return 5;
 					pos = 0;
